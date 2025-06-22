@@ -3,8 +3,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
-import logging
-from pathlib import Path
+from logger_config import get_logger
 
 
 def clean_dataframe(df):
@@ -16,17 +15,7 @@ def clean_dataframe(df):
     st.session_state.df = df
     return df
 
-# ========== Logging Setup ==========
-LOG_DIR = Path("logs")
-LOG_DIR.mkdir(exist_ok=True)
-LOG_FILE = LOG_DIR / "streamlit_info.log"
-
-logging.basicConfig(
-    filename=LOG_FILE,
-    level=logging.INFO,
-    format='%(asctime)s | %(levelname)s | %(message)s',
-    filemode='a'
-)
+logger = get_logger()
 
 st.set_page_config(page_title="Monthly Spending Report", layout="centered")
 
@@ -46,26 +35,26 @@ if selected_page == "Spending Summary":
 
         for file in uploaded_files:
             try:
-                logging.info(f"Processing file: {file.name}")
+                logger.info(f"Processing file: {file.name}")
                 df = pd.read_csv(file, delimiter=",", encoding="latin1")
-                logging.info(f"Loaded {len(df)} rows from {file.name}")
+                logger.info(f"Loaded {len(df)} rows from {file.name}")
                 df["Source File"] = file.name
                 all_data.append(df)
             except Exception as e:
-                logging.error(f"Error reading file {file.name}: {e}")
+                logger.error(f"Error reading file {file.name}: {e}")
                 st.error(f"Failed to load {file.name}. Check logs for more info.")
                 continue
 
         if all_data:
             try:
                 df = pd.concat(all_data, ignore_index=True)
-                logging.info("All files successfully combined.")
+                logger.info("All files successfully combined.")
                 # Standard cleaning
                 df = clean_dataframe(df)
                 st.session_state.df = df
-                logging.info(f"Data cleaned. Remaining rows: {len(df)}")
+                logger.info(f"Data cleaned. Remaining rows: {len(df)}")
             except Exception as e:
-                logging.exception("Error while processing data:")
+                logger.exception("Error while processing data:")
                 st.error("An error occurred while processing the data. Check logs for details.")
 
     if 'df' in st.session_state:
@@ -75,10 +64,10 @@ if selected_page == "Spending Summary":
                 st.stop()
             spending_df = df[df['Amount'] < 0].copy()
             spending_df['Amount'] = spending_df['Amount'].abs()
-            logging.info(f"Filtered to {len(spending_df)} spending transactions.")
+            logger.info(f"Filtered to {len(spending_df)} spending transactions.")
 
             earning_df = df[df['Amount'] > 0].copy()
-            logging.info(f"Filtered to {len(earning_df)} earning transactions.")
+            logger.info(f"Filtered to {len(earning_df)} earning transactions.")
 
             # --- Summaries ---
             total_spent = spending_df['Amount'].sum()
@@ -124,7 +113,7 @@ if selected_page == "Spending Summary":
             ax2.get_legend().remove()
             st.pyplot(fig2)
 
-            logging.info("Report successfully generated.")
+            logger.info("Report successfully generated.")
         except Exception as e:
-            logging.exception(f"Error generating report: {e}")
+            logger.exception(f"Error generating report: {e}")
             st.error("An error occurred while building the report. Check logs for details.")
